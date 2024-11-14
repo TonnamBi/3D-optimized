@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3D Box Packing Calculator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+    <header>
+        <h1>3D Box Packing Calculator</h1>
+    </header>
+
+    <main>
+        <div id="inputForm">
+            <h2>Enter Box Dimensions</h2>
+            <form id="boxForm">
+                <div id="boxes">
+                    <div class="boxInput">
+                        <h3>Box 1</h3>
+                        <label for="length0">Length:</label>
+                        <input type="number" id="length0" required />
+                        <label for="width0">Width:</label>
+                        <input type="number" id="width0" required />
+                        <label for="height0">Height:</label>
+                        <input type="number" id="height0" required />
+                    </div>
+                </div>
+
+                <button type="button" id="addBoxBtn">Add Another Box</button>
+                <button type="button" id="calculateBtn">Calculate</button>
+            </form>
+        </div>
+
+        <div id="container3D"></div>
+
+        <div id="box-list-tab">
+            <h3>Box Colors</h3>
+            <ul id="box-color-list">
+            </ul>
+        </div>
+    </main>
+
+    <script type="module" src="{{ url_for('static', filename='main.js') }}" defer></script>
+</body>
+</html>
