@@ -7,12 +7,17 @@ const renderer = new THREE.WebGLRenderer({ alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.getElementById("container3D").appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
-camera.position.z = 50;
+camera.position.set(40, 40, 40);
+camera.lookAt(0, 0, 0);
 
 const BASE_BOX_DIM = 30;
 
-const light = new THREE.AmbientLight(0x404040);
-scene.add(light);
+const ambientLight = new THREE.AmbientLight(0x404040, 2); 
+scene.add(ambientLight);
+
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1); 
+directionalLight.position.set(50, 50, 50);
+scene.add(directionalLight);
 
 window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -20,11 +25,10 @@ window.addEventListener("resize", () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-
-let boxCount = 1; 
+let boxCount = 1;
 
 document.getElementById("addBoxBtn").addEventListener("click", () => {
-    if (boxCount < 20) { 
+    if (boxCount < 20) {
         const newBoxInput = document.createElement("div");
         newBoxInput.classList.add("boxInput");
         newBoxInput.innerHTML = `
@@ -53,11 +57,11 @@ async function calculatePacking() {
         const width = document.getElementById(`width${i}`);
         const height = document.getElementById(`height${i}`);
 
-        if (length.value && width.value && height.value) {
+        if (length && width && height) {
             boxes.push({
                 length: parseFloat(length.value),
                 width: parseFloat(width.value),
-                height: parseFloat(height.value)
+                height: parseFloat(height.value),
             });
         }
     }
@@ -71,7 +75,7 @@ async function calculatePacking() {
         const response = await fetch("http://localhost:5000/calculate_packing", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ boxes })
+            body: JSON.stringify({ boxes }),
         });
 
         if (!response.ok) {
@@ -79,8 +83,9 @@ async function calculatePacking() {
         }
 
         const packedBoxes = await response.json();
-        console.log("Packed boxes data:", packedBoxes);  
+        console.log("Packed boxes data:", packedBoxes);
         visualizePacking(packedBoxes);
+        updateBoxStatus(packedBoxes.placement_status);
     } catch (error) {
         console.error("Error:", error);
         alert("There was an error while calculating the packing. Please try again.");
@@ -89,51 +94,62 @@ async function calculatePacking() {
 
 function visualizePacking(responseData) {
     const packedBoxes = responseData.packed_boxes;
-    const placementStatus = responseData.placement_status;
+    console.log("Visualizing Packing Data:", packedBoxes);
 
-    while (scene.children.length > 2) {
-        scene.remove(scene.children[2]);
-    }
+    scene.children = scene.children.filter((child) => child.type === "AmbientLight" || child.type === "DirectionalLight" || child.type === "PerspectiveCamera");
 
     const baseBox = new THREE.BoxGeometry(BASE_BOX_DIM, BASE_BOX_DIM, BASE_BOX_DIM);
     const baseMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
     const baseMesh = new THREE.Mesh(baseBox, baseMaterial);
-    baseMesh.position.set(0, 0, 0);
     scene.add(baseMesh);
 
-    const boxColorList = document.getElementById('box-color-list');
-    boxColorList.innerHTML = '';
+    console.log("Base box added to scene.");
 
-    packedBoxes.forEach((box, index) => {
+    packedBoxes.forEach((box, i) => {
+        console.log(`Adding box ${i}:`, box);
+
         const geometry = new THREE.BoxGeometry(box.length, box.width, box.height);
-        const color = Math.floor(Math.random() * 0xffffff);
-        const material = new THREE.MeshBasicMaterial({ color: color });
-
+        const color = box.color; 
+        const material = new THREE.MeshBasicMaterial({ color });
         const mesh = new THREE.Mesh(geometry, material);
+
         mesh.position.set(
             box.x - BASE_BOX_DIM / 2 + box.length / 2,
             box.y - BASE_BOX_DIM / 2 + box.width / 2,
             box.z - BASE_BOX_DIM / 2 + box.height / 2
         );
         scene.add(mesh);
+    });
 
-        const status = placementStatus.find(status => status.box_index === index).status;
-        updateBoxColorList(index, color, status); 
+    console.log("Packed boxes added to scene.");
+}
+
+function updateBoxStatus(placementStatus) {
+    const statusList = document.getElementById("box-status-list");
+    statusList.innerHTML = ""; 
+
+    placementStatus.forEach((statusObj) => {
+        const listItem = document.createElement("li");
+
+        listItem.style.display = "flex";
+        listItem.style.alignItems = "center"; 
+        listItem.style.marginBottom = "10px"; 
+
+        const colorHex = `#${statusObj.color.toString(16).padStart(6, '0')}`;
+
+        const colorIndicator = document.createElement("div");
+        colorIndicator.style.width = "15px";
+        colorIndicator.style.height = "15px";
+        colorIndicator.style.borderRadius = "50%";
+        colorIndicator.style.backgroundColor = colorHex;
+        colorIndicator.style.marginRight = "10px"; 
+
+        listItem.appendChild(colorIndicator);
+        listItem.appendChild(document.createTextNode(`${statusObj.box}: ${statusObj.status}`));
+
+        statusList.appendChild(listItem);
     });
 }
-
-function updateBoxColorList(index, color, status) {
-    const boxColorList = document.getElementById('box-color-list');
-
-    if (!document.getElementById(`box-${index}`)) {
-        const listItem = document.createElement('li');
-        listItem.textContent = `Box ${index + 1}: Color #${color.toString(16).padStart(6, '0')} - ${status}`;
-        listItem.style.color = `#${color.toString(16).padStart(6, '0')}`;
-        listItem.id = `box-${index}`;
-        boxColorList.appendChild(listItem);
-    }
-}
-
 
 document.getElementById("calculateBtn").addEventListener("click", calculatePacking);
 
