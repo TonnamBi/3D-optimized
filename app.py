@@ -64,7 +64,7 @@ def calculate_packing():
             number_of_decimals=0
         )
 
-        MAX_WEIGHT_FRAGILE = 50
+        MAX_WEIGHT_FRAGILE = 5000
 
         for box in packer.bins:
             for item in box.items:
