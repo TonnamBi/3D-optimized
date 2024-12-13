@@ -25,31 +25,52 @@ window.addEventListener("resize", () => {
 let boxCount = 1;
 
 document.getElementById("addBoxBtn").addEventListener("click", () => {
-    if (boxCount < 20) {
-        const newBoxInput = document.createElement("div");
-        newBoxInput.classList.add("boxInput");
-        newBoxInput.innerHTML = ` 
-            <h3>Box ${boxCount + 1}: <input type="text" id="boxName${boxCount}" placeholder="Box Name" required /></h3>
-            <label for="length${boxCount}">Height:</label>
-            <input type="number" id="length${boxCount}" required />
-            <label for="width${boxCount}">Width:</label>
-            <input type="number" id="width${boxCount}" required />
-            <label for="height${boxCount}">Length:</label>
-            <input type="number" id="height${boxCount}" required />
-            <label for="weight${boxCount}">Weight(Kg):</label>
-            <input type="number" id="weight${boxCount}" required />
-            <label for="fragile${boxCount}">Fragile:</label>
-            <select id="fragile${boxCount}" required>
+    if (boxCount < 100) {
+        // Create a new table row
+        const newBoxRow = document.createElement("tr");
+        newBoxRow.classList.add("boxInput");
+        newBoxRow.innerHTML = ` 
+            <td class="order">${boxCount + 1}</td>
+            <td><input type="text" id="boxName${boxCount}" required /></td>
+            <td><input type="number" id="length${boxCount}" required /></td>
+            <td><input type="number" id="width${boxCount}" required /></td>
+            <td><input type="number" id="height${boxCount}" required /></td>
+            <td><input type="number" id="weight${boxCount}" required /></td>
+            <td><input type="number" id="quantity${boxCount}" required /></td>
+            <td><select id="fragile${boxCount}" required>
                 <option value="false">Not Fragile</option>
                 <option value="true">Fragile</option>
-            </select>
+            </select></td>
+            <td><button type="button" class="deleteBtn">Delete</button></td>
         `;
-        document.getElementById("boxes").appendChild(newBoxInput);
+
+        // Append the new row to the table body
+        const tableBody = document.querySelector("#boxTable tbody");
+        tableBody.appendChild(newBoxRow);
+
+        // Add an input listener for the quantity field
+        const quantityInput = document.getElementById(`quantity${boxCount}`);
+        quantityInput.addEventListener("input", function () {
+            let quantity = parseInt(this.value, 10);
+            if (quantity < 1) {
+                this.value = 1;
+            }
+        });
+
+        // Increment box count
         boxCount++;
     } else {
-        alert("You can only add up to 20 boxes.");
+        alert("You can only add up to 100 boxes.");
     }
 });
+
+document.querySelector("#boxTable tbody").addEventListener("click", (e) => {
+    if (e.target.classList.contains("deleteBtn")) {
+        const row = e.target.closest("tr");
+        row.remove();
+    }
+});
+
 
 async function calculatePacking() {
     const boxes = [];
@@ -68,12 +89,13 @@ async function calculatePacking() {
 
     const boxInputs = boxesContainer.getElementsByClassName("boxInput");
     for (let i = 0; i < boxInputs.length; i++) {
-        const name = document.getElementById(`boxName${i}`).value;
-        const length = document.getElementById(`length${i}`);
-        const width = document.getElementById(`width${i}`);
-        const height = document.getElementById(`height${i}`);
-        const weight = document.getElementById(`weight${i}`);
-        const fragileDropdown = document.getElementById(`fragile${i}`);
+        const name = boxInputs[i].querySelector(`#boxName${i}`).value;
+        const quantity = parseInt(boxInputs[i].querySelector(`#quantity${i}`).value) || 1;
+        const length = boxInputs[i].querySelector(`#length${i}`);
+        const width = boxInputs[i].querySelector(`#width${i}`);
+        const height = boxInputs[i].querySelector(`#height${i}`);
+        const weight = boxInputs[i].querySelector(`#weight${i}`);
+        const fragileDropdown = boxInputs[i].querySelector(`#fragile${i}`);
 
         if (!name || !length.value || !width.value || !height.value || !weight.value || !fragileDropdown) {
             alert(`Box ${i + 1} has invalid or missing data.`);
@@ -82,14 +104,16 @@ async function calculatePacking() {
 
         const fragile = fragileDropdown.value === "true";
 
-        boxes.push({
-            name: name,
-            length: parseFloat(length.value),
-            width: parseFloat(width.value),
-            height: parseFloat(height.value),
-            weight: parseFloat(weight.value),
-            fragile: fragile
-        });
+        for (let q = 0; q < quantity; q++) {
+            boxes.push({
+                name: name,
+                length: parseFloat(length.value),
+                width: parseFloat(width.value),
+                height: parseFloat(height.value),
+                weight: parseFloat(weight.value),
+                fragile: fragile
+            });
+        }
     }
 
     if (boxes.length === 0) {
@@ -117,12 +141,17 @@ async function calculatePacking() {
 
         const packedBoxes = await response.json();
         console.log("Packed boxes data:", packedBoxes);
+        const boxInfoContainer = document.getElementById("packedBoxesInfo");
+        boxInfoContainer.innerHTML = '';
+
         visualizePacking(packedBoxes, baseWidth, baseHeight, baseLength);
     } catch (error) {
         console.error("Error:", error);
         alert(error.message || "There was an error while calculating the packing. Please try again.");
     }
 }
+
+
 
 function scrollToBottom() {
     window.scrollTo(0, document.body.scrollHeight);
@@ -136,7 +165,7 @@ function visualizePacking(responseData, baseWidth, baseHeight, baseLength) {
 
     const baseBox = new THREE.BoxGeometry(baseWidth, baseLength, baseHeight);
     const edgesGeometry = new THREE.EdgesGeometry(baseBox);
-    const edgesMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+    const edgesMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 }); // Changed to red
     const baseEdges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
     baseEdges.position.set(0, 0, 0);
 
@@ -145,7 +174,7 @@ function visualizePacking(responseData, baseWidth, baseHeight, baseLength) {
 
     packedBoxes.forEach((box) => {
         const geometry = new THREE.BoxGeometry(box.width, box.length, box.height);
-        const color = Math.floor(Math.random() * 0xffffff);
+        const color = Math.floor(Math.random() * 0xff0000);
         const material = new THREE.MeshBasicMaterial({ color: color });
 
         const mesh = new THREE.Mesh(geometry, material);
@@ -165,10 +194,31 @@ function visualizePacking(responseData, baseWidth, baseHeight, baseLength) {
         };
 
         boxesGroup.add(mesh);
+
+        displayBoxInfo(box);
     });
 
     scene.add(boxesGroup);
 }
+
+
+function displayBoxInfo(box) {
+    const boxInfoContainer = document.getElementById("packedBoxesInfo");
+    
+    const boxInfoDiv = document.createElement("div");
+    boxInfoDiv.classList.add("packedBoxInfo");
+
+    boxInfoDiv.innerHTML = `
+        <strong>Name:</strong> ${box.name} <br>
+        <strong>Length:</strong> ${box.length} <br>
+        <strong>Width:</strong> ${box.width} <br>
+        <strong>Weight:</strong> ${box.weight} Kg <br>
+        <strong>Fragile:</strong> ${box.fragile ? "Yes" : "No"} <br>
+    `;
+
+    boxInfoContainer.appendChild(boxInfoDiv);
+}
+
 
 function addLabel(value, axis, position, sizeTuple) {
     const fontLoader = new THREE.FontLoader();
@@ -178,7 +228,7 @@ function addLabel(value, axis, position, sizeTuple) {
             size: 0.75,
             height: 0.1,
         });
-        const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const textMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
         const textMesh = new THREE.Mesh(textGeometry, textMaterial);
         if (axis === 0) {
             textMesh.position.set(position, -sizeTuple[1] / 2 - 2, -sizeTuple[2] / 2);
@@ -216,7 +266,7 @@ function createDynamicRulerLines(sizeTuple) {
                 axisVector[1].set(-sizeTuple[0] / 2, -sizeTuple[1] / 2 - 1, position);
             }
 
-            const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
             const geometry = new THREE.BufferGeometry().setFromPoints(axisVector);
             const line = new THREE.Line(geometry, lineMaterial);
             rulerGroup.add(line);
